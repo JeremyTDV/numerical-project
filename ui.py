@@ -74,10 +74,13 @@ class GaussianSolverGUI:
         self.trail_output.insert(tk.END, "=== STEPS ===\n")
 
         # Solve
-        solution, steps = GaussianSolver.solve(coefficients, constants)
+        solution, steps, stopping_reason = GaussianSolver.solve(coefficients, constants)
 
         for idx, step in enumerate(steps, start=1):
             self.trail_output.insert(tk.END, f"Step {idx}: {step}\n")
+        
+        # STOPPING REASON
+        self.trail_output.insert(tk.END, f"\n=== STOPPING REASON ===\n{stopping_reason}\n")
 
         # FINAL
         self.trail_output.insert(tk.END, "\n=== FINAL ===\n")
@@ -110,8 +113,13 @@ class GaussianSolverGUI:
 
         # Also show final answer in the dedicated panel
         self.final_output.insert(tk.END, "Solution:\n")
-        for i, val in enumerate(solution):
-            self.final_output.insert(tk.END, f"{variables[i]} = {val:.4f}\n")
+        if "STOPPED" in stopping_reason:
+            self.final_output.insert(tk.END, f"⚠ Process did not complete normally.\n")
+            self.final_output.insert(tk.END, f"Reason: {stopping_reason.replace('STOPPED: ', '')}\n\n")
+            self.final_output.insert(tk.END, f"Variables: {', '.join([variables[i] for i in range(system_size)])}\n")
+        else:
+            for i, val in enumerate(solution):
+                self.final_output.insert(tk.END, f"{variables[i]} = {val:.4f}\n")
 
     def clear(self):
 
