@@ -161,6 +161,13 @@ class InputValidator:
         # Extract coefficient
         coeff_str = term[:var_pos].strip()
         
+        # Handle parentheses around coefficient
+        if coeff_str.startswith('(') and coeff_str.endswith(')'):
+            coeff_str = coeff_str[1:-1].strip()
+        
+        # Remove spaces from coefficient string
+        coeff_str = ''.join(coeff_str.split())
+        
         try:
             if coeff_str == '' or coeff_str == '+':
                 coeff = 1.0

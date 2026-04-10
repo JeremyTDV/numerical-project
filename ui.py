@@ -1,163 +1,216 @@
 import tkinter as tk
-from tkinter import messagebox, scrolledtext
+from tkinter import scrolledtext, messagebox, ttk
 from validator import InputValidator
+from solver import GaussianSolver
 
 
 class GaussianSolverGUI:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Gaussian Elimination Solver (Placeholder)")
-        self.root.geometry("900x700")
 
-        # INPUT PANEL
+    def __init__(self, root):
+
+        self.root = root
+        self.root.title("Linear System Solver")
+        self.root.geometry("900x700")
+        
+        # Create menu bar
+        self.create_menu()
+        
+        # Add keyboard shortcut for About (F1)
+        self.root.bind('<F1>', lambda e: self.show_about())
+
+        # INPUT AREA
         input_frame = tk.LabelFrame(root, text="Inputs", padx=10, pady=10)
         input_frame.pack(fill="x", padx=10, pady=5)
 
         tk.Label(input_frame, text="Enter equations (2x2 or 3x3):").pack()
-        tk.Label(input_frame, text="Press enter to add another equation").pack()
+        tk.Label(input_frame, text="Example: 2x + y = 5").pack()
+
+        # Method selection
+        method_frame = tk.Frame(input_frame)
+        method_frame.pack(pady=5)
+        tk.Label(method_frame, text="Select Method:").pack(side="left")
+        self.method_var = tk.StringVar(value="Gaussian Elimination")
+        self.method_combo = ttk.Combobox(method_frame, textvariable=self.method_var, 
+                                         values=["Gaussian Elimination", "Jacobi Iteration"], 
+                                         state="readonly", width=20)
+        self.method_combo.pack(side="left")
+
         self.eq_input = scrolledtext.ScrolledText(input_frame, height=6)
         self.eq_input.pack(fill="x")
 
         btn_frame = tk.Frame(input_frame)
         btn_frame.pack(pady=5)
 
-        tk.Button(btn_frame, text="Compute", command=self.compute_placeholder).pack(side="left", padx=5)
+        tk.Button(btn_frame, text="Compute", command=self.compute).pack(side="left", padx=5)
         tk.Button(btn_frame, text="Clear", command=self.clear).pack(side="left", padx=5)
 
-        # Solution Trail
+        # SOLUTION TRAIL
         trail_frame = tk.LabelFrame(root, text="Solution Trail")
         trail_frame.pack(fill="both", expand=True, padx=10, pady=5)
 
         self.trail_output = scrolledtext.ScrolledText(trail_frame)
         self.trail_output.pack(fill="both", expand=True)
 
-        # Final Answer
+        # FINAL ANSWER
         answer_frame = tk.LabelFrame(root, text="Final Answer")
         answer_frame.pack(fill="x", padx=10, pady=5)
 
         self.final_output = tk.Text(answer_frame, height=4)
         self.final_output.pack(fill="x")
 
-    # Placeholder for solution trail
-    def compute_placeholder(self):
+    def compute(self):
+
         equations_text = self.eq_input.get("1.0", tk.END).strip()
-        
+
         self.trail_output.delete("1.0", tk.END)
         self.final_output.delete("1.0", tk.END)
-        
-        # Validate equations
-        is_valid, error_msg, parsed_data = InputValidator.validate_equations(equations_text)
-        
-        # Log validation status
-        self.trail_output.insert(tk.END, "=== INPUT VALIDATION ===\n")
-        
-        if not is_valid:
-            self.trail_output.insert(tk.END, f"Status: FAIL\n\n")
-            self.trail_output.insert(tk.END, f"Validation Errors:\n")
-            self.trail_output.insert(tk.END, f"  ✗ {error_msg}\n")
-            self.trail_output.insert(tk.END, f"\nValidation Checks:\n")
+
+        # Validate input
+        valid, error, parsed = InputValidator.validate_equations(equations_text)
+
+        if not valid:
+            # Log error to trail before showing message box
+            self.trail_output.insert(tk.END, "=== VALIDATION ERROR ===\n")
+            self.trail_output.insert(tk.END, f"Error: {error}\n")
+            self.trail_output.insert(tk.END, "\n=== INPUT RECEIVED ===\n")
+            if equations_text.strip():
+                for line in equations_text.splitlines():
+                    if line.strip():
+                        self.trail_output.insert(tk.END, line.strip() + "\n")
+            else:
+                self.trail_output.insert(tk.END, "[No input provided]\n")
             
-            # Determine which checks failed
-            if "No equations provided" in error_msg:
-                self.trail_output.insert(tk.END, f"  ✗ Required fields present\n")
-                self.trail_output.insert(tk.END, f"  ○ Correct system size (2x2 or 3x3)\n")
-                self.trail_output.insert(tk.END, f"  ○ Equation format valid\n")
-                self.trail_output.insert(tk.END, f"  ○ All coefficients are numeric\n")
-                self.trail_output.insert(tk.END, f"  ○ All constants are numeric\n")
-                self.trail_output.insert(tk.END, f"  ○ Coefficient ranges acceptable\n")
-                self.trail_output.insert(tk.END, f"  ○ No zero rows detected\n")
-                self.trail_output.insert(tk.END, f"  ○ No linearly dependent equations\n")
-            elif "Only 2x2 and 3x3 systems are supported" in error_msg:
-                self.trail_output.insert(tk.END, f"  ✓ Required fields present\n")
-                self.trail_output.insert(tk.END, f"  ✗ Correct system size (2x2 or 3x3)\n")
-                self.trail_output.insert(tk.END, f"  ○ Equation format valid\n")
-                self.trail_output.insert(tk.END, f"  ○ All coefficients are numeric\n")
-                self.trail_output.insert(tk.END, f"  ○ All constants are numeric\n")
-                self.trail_output.insert(tk.END, f"  ○ Coefficient ranges acceptable\n")
-                self.trail_output.insert(tk.END, f"  ○ No zero rows detected\n")
-                self.trail_output.insert(tk.END, f"  ○ No linearly dependent equations\n")
-            elif "Equation" in error_msg and ("Missing '='" in error_msg or "Right side must be" in error_msg or "No variables found" in error_msg or "Invalid term" in error_msg or "appears multiple times" in error_msg):
-                self.trail_output.insert(tk.END, f"  ✓ Required fields present\n")
-                self.trail_output.insert(tk.END, f"  ✓ Correct system size (2x2 or 3x3)\n")
-                self.trail_output.insert(tk.END, f"  ✗ Equation format valid\n")
-                self.trail_output.insert(tk.END, f"  ○ All coefficients are numeric\n")
-                self.trail_output.insert(tk.END, f"  ○ All constants are numeric\n")
-                self.trail_output.insert(tk.END, f"  ○ Coefficient ranges acceptable\n")
-                self.trail_output.insert(tk.END, f"  ○ No zero rows detected\n")
-                self.trail_output.insert(tk.END, f"  ○ No linearly dependent equations\n")
-            elif "out of acceptable range" in error_msg:
-                self.trail_output.insert(tk.END, f"  ✓ Required fields present\n")
-                self.trail_output.insert(tk.END, f"  ✓ Correct system size (2x2 or 3x3)\n")
-                self.trail_output.insert(tk.END, f"  ✓ Equation format valid\n")
-                self.trail_output.insert(tk.END, f"  ✓ All coefficients are numeric\n")
-                self.trail_output.insert(tk.END, f"  ✓ All constants are numeric\n")
-                self.trail_output.insert(tk.END, f"  ✗ Coefficient ranges acceptable\n")
-                self.trail_output.insert(tk.END, f"  ○ No zero rows detected\n")
-                self.trail_output.insert(tk.END, f"  ○ No linearly dependent equations\n")
-            elif "Expected" in error_msg and "variable(s)" in error_msg:
-                self.trail_output.insert(tk.END, f"  ✓ Required fields present\n")
-                self.trail_output.insert(tk.END, f"  ✓ Correct system size (2x2 or 3x3)\n")
-                self.trail_output.insert(tk.END, f"  ✓ Equation format valid\n")
-                self.trail_output.insert(tk.END, f"  ✓ All coefficients are numeric\n")
-                self.trail_output.insert(tk.END, f"  ✓ All constants are numeric\n")
-                self.trail_output.insert(tk.END, f"  ✓ Coefficient ranges acceptable\n")
-                self.trail_output.insert(tk.END, f"  ✗ No zero rows detected\n")
-                self.trail_output.insert(tk.END, f"  ○ No linearly dependent equations\n")
-            elif "zero rows" in error_msg or "singular" in error_msg or "linearly dependent" in error_msg:
-                self.trail_output.insert(tk.END, f"  ✓ Required fields present\n")
-                self.trail_output.insert(tk.END, f"  ✓ Correct system size (2x2 or 3x3)\n")
-                self.trail_output.insert(tk.END, f"  ✓ Equation format valid\n")
-                self.trail_output.insert(tk.END, f"  ✓ All coefficients are numeric\n")
-                self.trail_output.insert(tk.END, f"  ✓ All constants are numeric\n")
-                self.trail_output.insert(tk.END, f"  ✓ Coefficient ranges acceptable\n")
-                if "zero rows" in error_msg:
-                    self.trail_output.insert(tk.END, f"  ✗ No zero rows detected\n")
-                    self.trail_output.insert(tk.END, f"  ○ No linearly dependent equations\n")
-                else:
-                    self.trail_output.insert(tk.END, f"  ✓ No zero rows detected\n")
-                    self.trail_output.insert(tk.END, f"  ✗ No linearly dependent equations\n")
+            messagebox.showerror("Validation Error", error)
+            return
+
+        system_size, coefficients, constants = parsed
+
+        method = self.method_var.get()
+
+        # GIVEN
+        self.trail_output.insert(tk.END, "=== GIVEN ===\n")
+        self.trail_output.insert(tk.END, "Equations:\n")
+        for line in equations_text.splitlines():
+            if line.strip():
+                self.trail_output.insert(tk.END, line.strip() + "\n")
+        self.trail_output.insert(tk.END, "\n")
+
+        # METHOD
+        self.trail_output.insert(tk.END, "=== METHOD ===\n")
+        if method == "Gaussian Elimination":
+            self.trail_output.insert(tk.END, "Gaussian elimination (forward elimination + back substitution)\n\n")
+        else:
+            self.trail_output.insert(tk.END, "Jacobi iteration\n\n")
+
+        # STEPS
+        self.trail_output.insert(tk.END, "=== STEPS ===\n")
+
+        # Solve with error handling
+        try:
+            if method == "Gaussian Elimination":
+                solution, steps, stopping_reason = GaussianSolver.solve(coefficients, constants)
+            else:
+                solution, steps, stopping_reason = GaussianSolver.jacobi_solve(coefficients, constants)
+
+            for idx, step in enumerate(steps, start=1):
+                self.trail_output.insert(tk.END, f"Step {idx}: {step}\n")
+                
+        except Exception as e:
+            self.trail_output.insert(tk.END, f"ERROR: Failed to solve system.\n")
+            self.trail_output.insert(tk.END, f"Error details: {str(e)}\n")
+            self.trail_output.insert(tk.END, f"This may indicate a singular matrix or numerical instability.\n")
             
-            self.final_output.insert(tk.END, "Validation failed. Please check your input.")
-            messagebox.showerror("Validation Error", error_msg)
+            # Set default values for failed computation
+            solution = [0.0] * system_size
+            stopping_reason = f"STOPPED: Computational error - {str(e)}"
+            
+            # Show error in final answer panel
+            self.final_output.insert(tk.END, "ERROR: Computation failed!\n")
+            self.final_output.insert(tk.END, f"Reason: {str(e)}\n")
             return
         
-        self.trail_output.insert(tk.END, f"Status: PASS\n")
-        
-        system_size, coefficients, constants = parsed_data
-        
-        # Display validation details
-        self.trail_output.insert(tk.END, f"System Size: {system_size}x{system_size}\n")
-        self.trail_output.insert(tk.END, f"Equations: {system_size}\n")
-        self.trail_output.insert(tk.END, f"Variables: {system_size}\n")
-        self.trail_output.insert(tk.END, f"\nValidation Checks Passed:\n")
-        self.trail_output.insert(tk.END, f"  ✓ Required fields present\n")
-        self.trail_output.insert(tk.END, f"  ✓ Correct system size (2x2 or 3x3)\n")
-        self.trail_output.insert(tk.END, f"  ✓ Equation format valid\n")
-        self.trail_output.insert(tk.END, f"  ✓ All coefficients are numeric\n")
-        self.trail_output.insert(tk.END, f"  ✓ All constants are numeric\n")
-        self.trail_output.insert(tk.END, f"  ✓ Coefficient ranges acceptable\n")
-        self.trail_output.insert(tk.END, f"  ✓ No zero rows detected\n")
-        self.trail_output.insert(tk.END, f"  ✓ No linearly dependent equations\n")
-        
-        # Display the parsed system
-        self.trail_output.insert(tk.END, f"\n=== PARSED SYSTEM ===\n")
-        self.trail_output.insert(tk.END, "\nCoefficient Matrix:\n")
-        
-        for i, row in enumerate(coefficients):
-            row_str = "  [" + ", ".join(f"{val:8.3f}" for val in row) + "]"
-            self.trail_output.insert(tk.END, row_str + "\n")
-        
-        self.trail_output.insert(tk.END, "\nConstants Vector:\n")
-        const_str = "  [" + ", ".join(f"{val:8.3f}" for val in constants) + "]"
-        self.trail_output.insert(tk.END, const_str + "\n")
-        
-        self.trail_output.insert(tk.END, "\n=== SOLUTION TRAIL ===\n")
-        self.trail_output.insert(tk.END, "Gaussian elimination steps coming soon...\n")
+        # STOPPING REASON
+        self.trail_output.insert(tk.END, f"\n=== STOPPING REASON ===\n{stopping_reason}\n")
 
-        self.final_output.insert(tk.END, "System is valid and ready to solve!")
+        # FINAL
+        self.trail_output.insert(tk.END, "\n=== FINAL ===\n")
+        variables = ["x", "y", "z"]
+        for i, val in enumerate(solution):
+            self.trail_output.insert(tk.END, f"{variables[i]} = {val:.4f}\n")
 
-    # Clear button
+        # VERIFICATION
+        self.trail_output.insert(tk.END, "\n=== VERIFICATION ===\n")
+        try:
+            import numpy as np
+
+            A = np.array(coefficients, dtype=float)
+            x = np.array(solution, dtype=float)
+            b = np.array(constants, dtype=float)
+            verified = np.allclose(A.dot(x), b, atol=1e-6, rtol=1e-6)
+
+            for i in range(len(b)):
+                lhs = float(np.dot(A[i], x))
+                self.trail_output.insert(tk.END, f"Eq {i+1}: LHS={lhs:.6f}  RHS={b[i]:.6f}\n")
+
+            self.trail_output.insert(tk.END, f"Verification: {'PASS' if verified else 'FAIL'}\n")
+        except Exception:
+            self.trail_output.insert(tk.END, "Verification: Unable to compute verification (numpy error).\n")
+
+        # SUMMARY
+        self.trail_output.insert(tk.END, "\n=== SUMMARY ===\n")
+        self.trail_output.insert(tk.END, "Solved system using Gaussian elimination.\n")
+        self.trail_output.insert(tk.END, "Solution is unique if the coefficient matrix is non-singular.\n")
+
+        # Also show final answer in the dedicated panel
+        self.final_output.insert(tk.END, "Solution:\n")
+        if "STOPPED" in stopping_reason:
+            self.final_output.insert(tk.END, f"⚠ Process did not complete normally.\n")
+            self.final_output.insert(tk.END, f"Reason: {stopping_reason.replace('STOPPED: ', '')}\n\n")
+            self.final_output.insert(tk.END, f"Variables: {', '.join([variables[i] for i in range(system_size)])}\n")
+        else:
+            for i, val in enumerate(solution):
+                self.final_output.insert(tk.END, f"{variables[i]} = {val:.4f}\n")
+
     def clear(self):
+
         self.eq_input.delete("1.0", tk.END)
         self.trail_output.delete("1.0", tk.END)
         self.final_output.delete("1.0", tk.END)
+
+    def create_menu(self):
+        """Create the menu bar with Help menu"""
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+        
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="About (F1)", command=self.show_about)
+        help_menu.add_separator()
+        help_menu.add_command(label="Exit", command=self.root.quit)
+
+    def show_about(self):
+        """Show About dialog with project information"""
+        about_text = """Linear System Solver
+Version 1.0
+
+
+Project Members:
+ Brosola, Gaines
+    Capua, Anthony Lorenzo
+    Valenzuela, Jeremy Terrence
+
+
+A simple calculator that solves systems of linear equations 
+using Gaussian Elimination step-by-step.
+
+
+Features:
+• Solves 2x2 and 3x3 systems
+• Step-by-step solution display
+• Input validation
+• Solution verification
+
+"""
+        
+        messagebox.showinfo("About Linear System Solver", about_text)
