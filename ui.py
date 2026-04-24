@@ -140,21 +140,46 @@ class GaussianSolverGUI:
 
         # VERIFICATION
         self.trail_output.insert(tk.END, "\n=== VERIFICATION ===\n")
-        try:
-            import numpy as np
-
-            A = np.array(coefficients, dtype=float)
-            x = np.array(solution, dtype=float)
-            b = np.array(constants, dtype=float)
-            verified = np.allclose(A.dot(x), b, atol=1e-6, rtol=1e-6)
-
-            for i in range(len(b)):
-                lhs = float(np.dot(A[i], x))
-                self.trail_output.insert(tk.END, f"Eq {i+1}: LHS={lhs:.6f}  RHS={b[i]:.6f}\n")
-
-            self.trail_output.insert(tk.END, f"Verification: {'PASS' if verified else 'FAIL'}\n")
-        except Exception:
-            self.trail_output.insert(tk.END, "Verification: Unable to compute verification (numpy error).\n")
+        
+        verification_result = GaussianSolver.verify_solution(coefficients, constants, solution)
+        
+        # Verification summary
+        self.trail_output.insert(tk.END, f"{verification_result['summary']}\n")
+        self.trail_output.insert(tk.END, f"Tolerance: {1e-6:.0e}\n\n")
+        
+        # Detailed equation verification
+        self.trail_output.insert(tk.END, "Equation-by-Equation Analysis:\n")
+        self.trail_output.insert(tk.END, "-" * 70 + "\n")
+        
+        for eq_info in verification_result['equation_results']:
+            eq_num = eq_info['equation_idx']
+            lhs = eq_info['lhs']
+            rhs = eq_info['rhs']
+            residual = eq_info['residual']
+            abs_residual = eq_info['abs_residual']
+            passed = eq_info['passed']
+            
+            status = "✓ PASS" if passed else "✗ FAIL"
+            self.trail_output.insert(tk.END, f"Eq {eq_num}: {status}\n")
+            self.trail_output.insert(tk.END, f"  LHS = {lhs:12.8f}  RHS = {rhs:12.8f}\n")
+            self.trail_output.insert(tk.END, f"  Residual = {residual:12.8f}  |Residual| = {abs_residual:.2e}\n")
+        
+        self.trail_output.insert(tk.END, "-" * 70 + "\n")
+        
+        # Verification metrics
+        self.trail_output.insert(tk.END, "Verification Metrics:\n")
+        self.trail_output.insert(tk.END, f"  Maximum Residual: {verification_result['max_residual']:.2e}\n")
+        self.trail_output.insert(tk.END, f"  Average Residual: {verification_result['avg_residual']:.2e}\n")
+        passed_count = sum(1 for eq in verification_result['equation_results'] if eq['passed'])
+        self.trail_output.insert(tk.END, f"  Equations Satisfied: {passed_count}/{len(verification_result['equation_results'])}\n")
+        
+        # Overall result
+        self.trail_output.insert(tk.END, "\nOverall Verification Result:\n")
+        if verification_result['is_verified']:
+            self.trail_output.insert(tk.END, "✓ Solution VERIFIED - All equations satisfied within tolerance.\n")
+        else:
+            self.trail_output.insert(tk.END, "✗ Solution NOT VERIFIED - Some equations exceed tolerance.\n")
+            self.trail_output.insert(tk.END, f"  {len(verification_result['equation_results']) - passed_count} equation(s) failed verification.\n")
 
         # SUMMARY
         self.trail_output.insert(tk.END, "\n=== SUMMARY ===\n")
@@ -170,6 +195,14 @@ class GaussianSolverGUI:
         else:
             for i, val in enumerate(solution):
                 self.final_output.insert(tk.END, f"{variables[i]} = {val:.4f}\n")
+            
+            # Add verification status to final answer
+            self.final_output.insert(tk.END, "\n" + "-" * 40 + "\n")
+            if verification_result['is_verified']:
+                self.final_output.insert(tk.END, "✓ VERIFIED\n")
+            else:
+                self.final_output.insert(tk.END, "✗ NOT VERIFIED\n")
+            self.final_output.insert(tk.END, f"Max Residual: {verification_result['max_residual']:.2e}\n")
 
     def clear(self):
 

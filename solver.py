@@ -143,3 +143,87 @@ class GaussianSolver:
         stopping_reason = f"STOPPED: Maximum iterations ({max_iterations}) reached without convergence."
         steps.append(f"\n⚠ {stopping_reason}")
         return x, steps, stopping_reason
+
+    @staticmethod
+    def verify_solution(coefficients, constants, solution, tolerance=1e-6):
+        """
+        Verify a solution to a linear system with detailed auditing.
+        
+        Args:
+            coefficients: Coefficient matrix
+            constants: Constants vector
+            solution: Solution vector to verify
+            tolerance: Tolerance for considering equation as satisfied
+        
+        Returns:
+            Dictionary with detailed verification information:
+            {
+                'is_verified': bool,
+                'residuals': list of residuals,
+                'max_residual': max absolute residual,
+                'avg_residual': average absolute residual,
+                'equation_results': list of {equation_idx, lhs, rhs, residual, passed},
+                'all_passed': bool,
+                'summary': str
+            }
+        """
+        try:
+            A = np.array(coefficients, dtype=float)
+            x = np.array(solution, dtype=float)
+            b = np.array(constants, dtype=float)
+            
+            # Calculate residuals: r = Ax - b
+            ax = A.dot(x)
+            residuals = ax - b
+            abs_residuals = np.abs(residuals)
+            
+            max_residual = np.max(abs_residuals)
+            avg_residual = np.mean(abs_residuals)
+            
+            # Check each equation
+            equation_results = []
+            all_passed = True
+            
+            for i in range(len(b)):
+                lhs = float(ax[i])
+                rhs = float(b[i])
+                residual = float(residuals[i])
+                passed = abs(residual) < tolerance
+                
+                if not passed:
+                    all_passed = False
+                
+                equation_results.append({
+                    'equation_idx': i + 1,
+                    'lhs': lhs,
+                    'rhs': rhs,
+                    'residual': residual,
+                    'abs_residual': abs(residual),
+                    'passed': passed
+                })
+            
+            # Determine overall verification status
+            is_verified = np.allclose(ax, b, atol=tolerance, rtol=1e-10)
+            
+            summary = f"{'✓ VERIFIED' if is_verified else '✗ NOT VERIFIED'}: {sum(1 for eq in equation_results if eq['passed'])}/{len(b)} equations satisfied"
+            
+            return {
+                'is_verified': is_verified,
+                'all_passed': all_passed,
+                'residuals': residuals.tolist(),
+                'max_residual': float(max_residual),
+                'avg_residual': float(avg_residual),
+                'equation_results': equation_results,
+                'summary': summary
+            }
+            
+        except Exception as e:
+            return {
+                'is_verified': False,
+                'all_passed': False,
+                'residuals': [],
+                'max_residual': None,
+                'avg_residual': None,
+                'equation_results': [],
+                'summary': f'✗ VERIFICATION ERROR: {str(e)}'
+            }
