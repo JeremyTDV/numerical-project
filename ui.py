@@ -10,8 +10,28 @@ class GaussianSolverGUI:
     def __init__(self, root):
 
         self.root = root
-        self.root.title("Linear System Solver")
-        self.root.geometry("900x700")
+        self.root.title("Linear System Solver v1.0")
+        self.root.geometry("900x750")
+        self.root.configure(bg="#f0f2f5")
+        
+        # Modern color scheme
+        self.colors = {
+            'bg_primary': '#f0f2f5',
+            'bg_secondary': '#ffffff',
+            'text_primary': '#1a1a1a',
+            'text_secondary': '#65676b',
+            'accent': '#0a66c2',
+            'accent_hover': '#004182',
+            'border': '#ccc',
+            'success': '#31a24c',
+            'error': '#f02849'
+        }
+        
+        # Configure style for ttk widgets
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure('TCombobox', fieldbackground=self.colors['bg_secondary'], background=self.colors['bg_secondary'])
+        style.configure('TButton', font=('Segoe UI', 10), borderwidth=0)
         
         # Create menu bar
         self.create_menu()
@@ -20,45 +40,123 @@ class GaussianSolverGUI:
         self.root.bind('<F1>', lambda e: self.show_about())
 
         # INPUT AREA
-        input_frame = tk.LabelFrame(root, text="Inputs", padx=10, pady=10)
-        input_frame.pack(fill="x", padx=10, pady=5)
+        input_frame = tk.LabelFrame(root, text="Inputs", padx=15, pady=15, 
+                                    bg=self.colors['bg_secondary'], fg=self.colors['text_primary'],
+                                    font=('Segoe UI', 11, 'bold'), relief=tk.FLAT, bd=0)
+        input_frame.pack(fill="x", padx=12, pady=10)
         input_frame.columnconfigure(0, weight=1)
 
-        tk.Label(input_frame, text="Enter equations (2x2 or 3x3):").grid(row=0, column=0, sticky="w", pady=(0,2))
-        tk.Label(input_frame, text="Example: 2x + y = 5").grid(row=1, column=0, sticky="w", pady=(0,10))
+        # Title label
+        title_label = tk.Label(input_frame, text="Enter equations (2x2 or 3x3):", 
+                               bg=self.colors['bg_secondary'], fg=self.colors['text_primary'],
+                               font=('Segoe UI', 10, 'bold'))
+        title_label.grid(row=0, column=0, sticky="w", pady=(0, 5))
+        
+        # Example label
+        example_label = tk.Label(input_frame, text="Example: 2x + y = 5", 
+                                 bg=self.colors['bg_secondary'], fg=self.colors['text_secondary'],
+                                 font=('Segoe UI', 9))
+        example_label.grid(row=1, column=0, sticky="w", pady=(0, 10))
 
         # Method selection
-        method_frame = tk.Frame(input_frame)
-        method_frame.grid(row=2, column=0, sticky="w", pady=(0,5))
-        tk.Label(method_frame, text="Select Method:").pack(side="left")
+        method_frame = tk.Frame(input_frame, bg=self.colors['bg_secondary'])
+        method_frame.grid(row=2, column=0, sticky="w", pady=(0, 12))
+        method_label = tk.Label(method_frame, text="Method:", 
+                               bg=self.colors['bg_secondary'], fg=self.colors['text_primary'],
+                               font=('Segoe UI', 10, 'bold'))
+        method_label.pack(side="left", padx=(0, 8))
         self.method_var = tk.StringVar(value="Gaussian Elimination")
         self.method_combo = ttk.Combobox(method_frame, textvariable=self.method_var, 
                                          values=["Gaussian Elimination", "Jacobi Iteration"], 
-                                         state="readonly", width=20)
-        self.method_combo.pack(side="left", padx=(5,0))
+                                         state="readonly", width=22, font=('Segoe UI', 10))
+        self.method_combo.pack(side="left")
 
-        self.eq_input = scrolledtext.ScrolledText(input_frame, height=6)
-        self.eq_input.grid(row=3, column=0, sticky="ew", pady=(0,10))
+        # Input text area with border
+        input_border = tk.Frame(input_frame, bg=self.colors['border'], highlightthickness=0)
+        input_border.grid(row=3, column=0, sticky="ew", pady=(0, 12))
+        
+        self.eq_input = scrolledtext.ScrolledText(input_border, height=6, width=60,
+                                                   font=('Consolas', 10),
+                                                   bg=self.colors['bg_secondary'],
+                                                   fg=self.colors['text_primary'],
+                                                   relief=tk.FLAT, bd=0, padx=10, pady=8)
+        self.eq_input.pack(fill="both", expand=True, padx=1, pady=1)
 
-        btn_frame = tk.Frame(input_frame)
+        # Button frame with modern buttons
+        btn_frame = tk.Frame(input_frame, bg=self.colors['bg_secondary'])
         btn_frame.grid(row=4, column=0, sticky="w")
-        tk.Button(btn_frame, text="Compute", command=self.compute).pack(side="left", padx=(0,5))
-        tk.Button(btn_frame, text="Clear", command=self.clear).pack(side="left", padx=(0,5))
-        tk.Button(btn_frame, text="Export Report", command=self.export_report).pack(side="left")
+        
+        compute_btn = self.create_button(btn_frame, "Compute", self.compute, 'accent')
+        compute_btn.pack(side="left", padx=(0, 8))
+        
+        clear_btn = self.create_button(btn_frame, "Clear", self.clear, 'secondary')
+        clear_btn.pack(side="left", padx=(0, 8))
+        
+        export_btn = self.create_button(btn_frame, "Export Report", self.export_report, 'secondary')
+        export_btn.pack(side="left")
 
         # SOLUTION TRAIL
-        trail_frame = tk.LabelFrame(root, text="Solution Trail")
-        trail_frame.pack(fill="both", expand=True, padx=10, pady=5)
+        trail_frame = tk.LabelFrame(root, text="Solution Trail", padx=10, pady=10,
+                                    bg=self.colors['bg_secondary'], fg=self.colors['text_primary'],
+                                    font=('Segoe UI', 11, 'bold'), relief=tk.FLAT, bd=0)
+        trail_frame.pack(fill="both", expand=True, padx=12, pady=10)
 
-        self.trail_output = scrolledtext.ScrolledText(trail_frame)
+        self.trail_output = scrolledtext.ScrolledText(trail_frame, height=15,
+                                                      font=('Consolas', 9),
+                                                      bg=self.colors['bg_primary'],
+                                                      fg=self.colors['text_primary'],
+                                                      relief=tk.FLAT, bd=0, padx=10, pady=8)
         self.trail_output.pack(fill="both", expand=True)
 
         # FINAL ANSWER
-        answer_frame = tk.LabelFrame(root, text="Final Answer")
-        answer_frame.pack(fill="x", padx=10, pady=5)
+        answer_frame = tk.LabelFrame(root, text="Final Answer", padx=10, pady=10,
+                                     bg=self.colors['bg_secondary'], fg=self.colors['text_primary'],
+                                     font=('Segoe UI', 11, 'bold'), relief=tk.FLAT, bd=0)
+        answer_frame.pack(fill="x", padx=12, pady=10)
 
-        self.final_output = tk.Text(answer_frame, height=4)
+        self.final_output = tk.Text(answer_frame, height=5,
+                                    font=('Consolas', 10),
+                                    bg=self.colors['bg_primary'],
+                                    fg=self.colors['accent'],
+                                    relief=tk.FLAT, bd=0, padx=10, pady=8)
         self.final_output.pack(fill="x")
+
+    def create_button(self, parent, text, command, style_type='secondary'):
+        """Create a modern styled button"""
+        if style_type == 'accent':
+            btn = tk.Button(parent, text=text, command=command,
+                           bg=self.colors['accent'], fg='white',
+                           font=('Segoe UI', 10, 'bold'),
+                           padx=16, pady=8, relief=tk.FLAT, bd=0,
+                           cursor='hand2', activebackground=self.colors['accent_hover'],
+                           activeforeground='white')
+        else:  # secondary style
+            btn = tk.Button(parent, text=text, command=command,
+                           bg=self.colors['border'], fg=self.colors['text_primary'],
+                           font=('Segoe UI', 10),
+                           padx=16, pady=8, relief=tk.FLAT, bd=0,
+                           cursor='hand2', activebackground='#e4e6eb',
+                           activeforeground=self.colors['text_primary'])
+        
+        # Add hover effect binding
+        btn.bind('<Enter>', lambda e: self._on_button_enter(e, style_type))
+        btn.bind('<Leave>', lambda e: self._on_button_leave(e, style_type))
+        
+        return btn
+    
+    def _on_button_enter(self, event, style_type):
+        """Handle button hover enter"""
+        if style_type == 'accent':
+            event.widget.config(bg=self.colors['accent_hover'])
+        else:
+            event.widget.config(bg='#e4e6eb')
+    
+    def _on_button_leave(self, event, style_type):
+        """Handle button hover leave"""
+        if style_type == 'accent':
+            event.widget.config(bg=self.colors['accent'])
+        else:
+            event.widget.config(bg=self.colors['border'])
 
     def compute(self):
 
@@ -394,11 +492,16 @@ class GaussianSolverGUI:
 
     def create_menu(self):
         """Create the menu bar with Help menu"""
-        menubar = tk.Menu(self.root)
+        menubar = tk.Menu(self.root, bg=self.colors['bg_secondary'], 
+                         fg=self.colors['text_primary'], font=('Segoe UI', 10),
+                         activebackground=self.colors['accent'], activeforeground='white')
         self.root.config(menu=menubar)
         
         # Help menu
-        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu = tk.Menu(menubar, bg=self.colors['bg_secondary'],
+                           fg=self.colors['text_primary'], font=('Segoe UI', 10),
+                           activebackground=self.colors['accent'], activeforeground='white',
+                           tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="About (F1)", command=self.show_about)
         help_menu.add_separator()
